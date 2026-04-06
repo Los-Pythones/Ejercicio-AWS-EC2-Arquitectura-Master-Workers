@@ -27,3 +27,20 @@
 ---
 
 ## Sección 2 / Lo que hace el Líder
+
+1. [`¿Por qué no usar la cuenta root para todo?`](docs/2-creacion-usuarios-iam.md#por-qué-no-trabajar-directamente-con-la-cuenta-root)
+2. [`Ingresar a IAM desde la consola de AWS`](docs/2-creacion-usuarios-iam.md#paso-1--ingresar-a-iam-desde-la-consola-de-aws)
+3. [`Crear los grupos con sus políticas`](docs/2-creacion-usuarios-iam.md#paso-2--crear-los-grupos-con-sus-políticas)
+4. [`Crear los usuarios IAM`](docs/2-creacion-usuarios-iam.md#paso-3--crear-los-usuarios-iam)
+5. [`Obtener las credenciales de cada usuario`](docs/2-creacion-usuarios-iam.md#paso-4--obtener-las-credenciales-de-cada-usuario)
+6. [`Enviar las credenciales a cada integrante`](docs/2-creacion-usuarios-iam.md#paso-5--enviar-las-credenciales-a-cada-integrante)
+
+---
+
+## Sección 3 / Ingreso a la consola de AWS con usuario IAM
+
+1. [`Acceder a la URL de inicio de sesión`](docs/3-ingreso-ala-consola-AWS.md#paso-1--acceder-a-la-url-de-inicio-de-sesión)
+2. [`Iniciar sesión`](docs/3-ingreso-ala-consola-AWS.md#paso-2--iniciar-sesión)
+3. [`Cambiar la contraseña en el primer ingreso`](docs/3-ingreso-ala-consola-AWS.md#03--ingreso-a-la-consola-de-aws-con-usuario-iam)
+4. [`Reconocer los permisos del rol asignado`](docs/3-ingreso-ala-consola-AWS.md#paso-4--reconocer-los-permisos-del-rol-asignado)
+5. [`Verificar la región de trabajo`](docs/3-ingreso-ala-consola-AWS.md#paso-5--verificar-la-región-de-trabajo)
