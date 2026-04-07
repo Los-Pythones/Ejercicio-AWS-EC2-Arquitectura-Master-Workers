@@ -1,4 +1,4 @@
-# 02.1 — Creación de políticas personalizadas en IAM
+# 02 — Creación de políticas personalizadas en IAM
 Cuando los permisos que necesita un grupo no coinciden exactamente con las políticas predefinidas que ofrece AWS, se debe crear una política personalizada (custom policy). Este fue el caso del grupo `Data Ingenners`, donde se requería acceso a S3 con lectura y escritura pero sin permiso de borrado.
 
 ---
@@ -67,7 +67,7 @@ Esta fue la política creada para el grupo Data Ingineers. Contiene dos bloques:
 ```
 
 ### ¿Qué permite exactamente cada bloque?
-**Bloque** `S3ReadWriteNoDelete`:
+#### **Bloque** `S3ReadWriteNoDelete`:
 
 | Acción                 | Qué permite                                       |
 |:-----------------------|:--------------------------------------------------|
@@ -79,7 +79,7 @@ Esta fue la política creada para el grupo Data Ingineers. Contiene dos bloques:
 
 Nótese que `s3:DeleteObject` no está incluido, lo que impide que un Ingeniero de Datos pueda eliminar archivos de S3.<br>
 
-**Bloque** `EC2ReadWriteNoDelete`:
+#### **Bloque** `EC2ReadWriteNoDelete`:
 
 | `ec2:RunInstances` | Lanzar nuevas instancias |
 
@@ -95,7 +95,7 @@ De la misma forma, `ec2:TerminateInstances` **no está incluido**, por lo que ni
 
 ---
 
-Cómo crear esta política en la consola de AWS
+## Cómo crear esta política en la consola de AWS
 
 1. Ingresar a **IAM** → en el panel izquierdo seleccionar Policies → `Create policy`.
 ![Select Create Policy](../assets/screenshots/IAM/02.1-selecciona-createPolicy.png)

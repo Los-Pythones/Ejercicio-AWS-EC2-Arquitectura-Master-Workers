@@ -1,4 +1,4 @@
-# 02 / Lo que hace el Líder: crear los usuarios IAM
+# 03 / Lo que hace el Líder: crear los usuarios IAM
 Esta sección está dirigida principalmente al Líder del equipo, ya que es quien ejecuta todos los pasos aquí descritos. El resto del equipo solo necesita leerla para entender qué sucedió antes de que recibieran sus credenciales.
 
 ---
@@ -20,7 +20,7 @@ En esta actividad, el Líder usó la cuenta root exclusivamente para crear los g
 
 ## Paso 2 / Crear los grupos con sus políticas
 Los grupos permiten asignar permisos a varios usuarios a la vez. En esta actividad se crearon dos grupos, cada uno con un conjunto de permisos diferente.<br><br>
-Crear el grupo Ingenieros de Datos
+#### Crear el grupo Ingenieros de Datos
 
 1. En el panel de IAM, ir a User groups → `Create group`.
 ![Select Create Group](../assets/screenshots/IAM/02-seleccionar-createGroup.png)
@@ -36,11 +36,11 @@ Crear el grupo Ingenieros de Datos
 
 > ⚠️ Nota sobre S3: AWS no tiene una política predefinida que otorgue lectura/escritura en S3 sin permiso de borrado. Para aplicar esto correctamente se debe crear una **política personalizada** con las acciones `s3:GetObject`, `s3:PutObject` y `s3:ListBucket` explícitamente, sin incluir `s3:DeleteObject`. Si en la actividad se usó `AmazonS3FullAccess` por simplicidad, es válido para el ejercicio académico.
 
-PD para los quieran crear la politica personalida: [`Custom Policy`](2.1-políticas-personalizadas.md)
+PD para los quieran crear la politica personalida: [`Custom Policy`](02-políticas-personalizadas.md)
 
 4. Hacer clic en `Create group`.
 
-Crear el grupo Analistas-de-Datos (Mismo proceso que el de los ingenieros solo que cambian las politicas que se le asignan)
+#### Crear el grupo Analistas-de-Datos (Mismo proceso que el de los ingenieros solo que cambian las politicas que se le asignan)
 
 1. Ir a User groups → `Create group`.
 2. Asignar el nombre `Data analysts` .

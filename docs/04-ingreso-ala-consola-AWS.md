@@ -1,4 +1,4 @@
-# 03 / Ingreso a la consola de AWS con usuario IAM
+# 04 / Ingreso a la consola de AWS con usuario IAM
 Una vez que el Líder envió las credenciales por el canal de comunicación del equipo, cada integrante debió seguir los pasos de esta sección para ingresar a la consola de AWS con su propio usuario.
 
 ---

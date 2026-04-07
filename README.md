@@ -17,45 +17,100 @@
 
 ## Sección 1 / Conceptos claves
 
-1. [`¿Qué es AWS?`](docs/1-conceptos-previos.md#1-qué-es-aws)
-2. [`¿Qué es IAM?`](docs/1-conceptos-previos.md#2-qué-es-iam)
-3. [`¿Qué es EC2?`](docs/1-conceptos-previos.md#3-qué-es-ec2)
-4. [`¿Qué es una Key Pair?`](docs/1-conceptos-previos.md#4-qué-es-una-key-pair)
-5. [`¿Qué es SSH y cómo funciona el sistema de llaves?`](docs/1-conceptos-previos.md#5-qué-es-ssh-y-cómo-funciona-el-sistema-de-llaves)
-6. [`¿Qué es un Security Group?`](docs/1-conceptos-previos.md#6-qué-es-un-security-group)
+1. [`¿Qué es AWS?`](docs/01-conceptos-previos.md#1-qué-es-aws)
+2. [`¿Qué es IAM?`](docs/01-conceptos-previos.md#2-qué-es-iam)
+3. [`¿Qué es EC2?`](docs/01-conceptos-previos.md#3-qué-es-ec2)
+4. [`¿Qué es una VPC?`](docs/01-conceptos-previos.md#4-qué-es-una-vpc)
+5. [`¿Qué es una Subnet?`](docs/01-conceptos-previos.md#5-qué-es-una-subnet)
+6. [`¿Qué es un Internet Gateway?`](docs/01-conceptos-previos.md#6-qué-es-un-internet-gateway)
+7. [`¿Qué es una Tabla de Ruteo?`](docs/01-conceptos-previos.md#7-qué-es-una-tabla-de-ruteo)
+8. [`¿Qué es un Security Group?`](docs/01-conceptos-previos.md#8-qué-es-un-security-group)
+9. [`¿Qué es una Key Pair?`](docs/01-conceptos-previos.md#9-qué-es-una-key-pair)
+10. [`¿Qué es SSH y cómo funciona el sistema de llaves?`](docs/01-conceptos-previos.md#10-qué-es-ssh-y-cómo-funciona-el-sistema-de-llaves)
 
 ---
 
-## Sección 2 / Lo que hace el Líder
+## Sección 2 / Políticas personalizadas en IAM
 
-1. [`¿Por qué no usar la cuenta root para todo?`](docs/2-creacion-usuarios-iam.md#por-qué-no-trabajar-directamente-con-la-cuenta-root)
-2. [`Ingresar a IAM desde la consola de AWS`](docs/2-creacion-usuarios-iam.md#paso-1--ingresar-a-iam-desde-la-consola-de-aws)
-3. [`Crear los grupos con sus políticas`](docs/2-creacion-usuarios-iam.md#paso-2--crear-los-grupos-con-sus-políticas)
-4. [`Crear los usuarios IAM`](docs/2-creacion-usuarios-iam.md#paso-3--crear-los-usuarios-iam)
-5. [`Obtener las credenciales de cada usuario`](docs/2-creacion-usuarios-iam.md#paso-4--obtener-las-credenciales-de-cada-usuario)
-6. [`Enviar las credenciales a cada integrante`](docs/2-creacion-usuarios-iam.md#paso-5--enviar-las-credenciales-a-cada-integrante)
-
----
-
-## Sección 3 / Ingreso a la consola de AWS con usuario IAM
-
-1. [`Acceder a la URL de inicio de sesión`](docs/3-ingreso-ala-consola-AWS.md#paso-1--acceder-a-la-url-de-inicio-de-sesión)
-2. [`Iniciar sesión`](docs/3-ingreso-ala-consola-AWS.md#paso-2--iniciar-sesión)
-3. [`Cambiar la contraseña en el primer ingreso`](docs/3-ingreso-ala-consola-AWS.md#03--ingreso-a-la-consola-de-aws-con-usuario-iam)
-4. [`Reconocer los permisos del rol asignado`](docs/3-ingreso-ala-consola-AWS.md#paso-4--reconocer-los-permisos-del-rol-asignado)
-5. [`Verificar la región de trabajo`](docs/3-ingreso-ala-consola-AWS.md#paso-5--verificar-la-región-de-trabajo)
+1. [`¿Qué es una política en IAM?`](docs/02-políticas-personalizadas.md#qué-es-una-política-en-iam)
+2. [`Política personalizada — Data Engineers`](docs/02-políticas-personalizadas.md#política-personalizada--data-engineers)
+    - [`Bloque S3ReadWriteNoDelete`](docs/02-políticas-personalizadas.md#bloque-s3readwritenodelete)
+    - [`Bloque EC2ReadWriteNoDelete`](docs/02-políticas-personalizadas.md#bloque-ec2readwritenodelete)
+3. [`Cómo crear la política en la consola de AWS`](docs/02-políticas-personalizadas.md#cómo-crear-esta-política-en-la-consola-de-aws)
 
 ---
 
-## Sección 4 / Creación de las instancias EC2
+## Sección 3 / Lo que hace el Líder: crear los usuarios IAM
 
-1. [`Ingresar a EC2 y lanzar una instancia`](docs/4-crear-instancias.md#paso-1--ingresar-a-ec2-y-lanzar-una-instancia)
-2. [`Nombre de la instancia`](docs/4-crear-instancias.md#paso-2--nombre-de-la-instancia)
-3. [`Elegir la AMI`](docs/4-crear-instancias.md#paso-3--elegir-la-ami)
-4. [`Tipo de instancia`](docs/4-crear-instancias.md#paso-4--tipo-de-instancia)
-5. [`Crear el Key Pair`](docs/4-crear-instancias.md#paso-5--crear-el-key-pair)
-6. [`Configurar Network settings`](docs/4-crear-instancias.md#paso-6--configurar-network-settings)
-7. [`Almacenamiento`](docs/4-crear-instancias.md#paso-7--almacenamiento)
-8. [`Lanzar la instancia`](docs/4-crear-instancias.md#paso-8--lanzar-la-instancia)
-9. [`Obtener el DNS público y compartirlo con el equipo`](docs/4-crear-instancias.md#paso-9--obtener-el-dns-público-y-compartirlo-con-el-equipo)
-10. [`Cada Worker crea su instancia`](docs/4-crear-instancias.md#42--cada-worker-crea-su-instancia)
+1. [`¿Por qué no usar la cuenta root?`](docs/03-creacion-usuarios-iam.md#por-qué-no-trabajar-directamente-con-la-cuenta-root)
+2. [`Ingresar a IAM desde la consola de AWS`](docs/03-creacion-usuarios-iam.md#paso-1--ingresar-a-iam-desde-la-consola-de-aws)
+3. [`Crear los grupos con sus políticas`](docs/03-creacion-usuarios-iam.md#paso-2--crear-los-grupos-con-sus-políticas)
+    - [`Crear el grupo Data Engineers`](docs/03-creacion-usuarios-iam.md#crear-el-grupo-ingenieros-de-datos)
+   - [`Crear el grupo Data Analysts`](docs/03-creacion-usuarios-iam.md#crear-el-grupo-analistas-de-datos-mismo-proceso-que-el-de-los-ingenieros-solo-que-cambian-las-politicas-que-se-le-asignan)
+5. [`Crear los 4 usuarios IAM`](docs/03-creacion-usuarios-iam.md#paso-3--crear-los-usuarios-iam)
+6. [`Obtener las credenciales de cada usuario`](docs/03-creacion-usuarios-iam.md#paso-4--obtener-las-credenciales-de-cada-usuario)
+7. [`Enviar las credenciales al equipo`](docs/03-creacion-usuarios-iam.md#paso-5--enviar-las-credenciales-a-cada-integrante)
+
+---
+
+## Sección 4 / Ingreso a la consola de AWS con usuario IAM
+
+1. [`Acceder a la URL de inicio de sesión`](docs/04-ingreso-ala-consola-AWS.md#paso-1--acceder-a-la-url-de-inicio-de-sesión)
+2. [`Iniciar sesión`](docs/04-ingreso-ala-consola-AWS.md#paso-2--iniciar-sesión)
+3. [`Cambiar la contraseña en el primer ingreso`](docs/04-ingreso-ala-consola-AWS.md#paso-3--cambiar-la-contraseña-en-el-primer-ingreso)
+4. [`Reconocer los permisos del rol asignado`](docs/04-ingreso-ala-consola-AWS.md#paso-4--reconocer-los-permisos-del-rol-asignado)
+5. [`Verificar la región de trabajo`](docs/04-ingreso-ala-consola-AWS.md#paso-5--verificar-la-región-de-trabajo)
+
+---
+
+## Sección 5 / Configuración de la VPC
+
+1. [`¿Por qué crear una VPC propia?`](docs/05-configuracion-vpc.md#paso-1--por-qué-crear-una-vpc-propia)
+2. [`Crear la VPC`](docs/05-configuracion-vpc.md#paso-2--crear-la-vpc)
+3. [`Crear la Subnet Pública`](docs/05-configuracion-vpc.md#paso-3--crear-la-subnet-pública-master)
+4. [`Crear la Subnet Privada`](docs/05-configuracion-vpc.md#paso-4--crear-la-subnet-privada-workers)
+5. [`Crear el Internet Gateway`](docs/05-configuracion-vpc.md#paso-5--crear-el-internet-gateway)
+6. [`Asociar el Internet Gateway a la VPC`](docs/05-configuracion-vpc.md#paso-6--asociar-el-internet-gateway-a-la-vpc)
+7. [`Configurar la Tabla de Ruteo pública`](docs/05-configuracion-vpc.md#paso-7--configurar-la-tabla-de-ruteo-pública)
+8. [`Crear los Security Groups`](docs/05-configuracion-vpc.md#paso-8--crear-los-security-groups)
+9. [`VPC Endpoint — intento fallido`](docs/05-configuracion-vpc.md#paso-9--vpc-endpoint--intento-fallido)
+
+---
+
+## Sección 6 / Creación de las instancias EC2
+
+**6.1 El Líder crea el Master**
+1. [`Ingresar a EC2 y lanzar una instancia`](docs/06-crear-instancias.md#paso-1--ingresar-a-ec2-y-lanzar-una-instancia)
+2. [`Nombre de la instancia`](docs/06-crear-instancias.md#paso-2--nombre-de-la-instancia)
+3. [`Elegir la AMI`](docs/06-crear-instancias.md#paso-3--elegir-la-ami)
+4. [`Tipo de instancia`](docs/06-crear-instancias.md#paso-4--tipo-de-instancia)
+5. [`Crear el Key Pair`](docs/06-crear-instancias.md#paso-5--crear-el-key-pair)
+6. [`Configurar Network settings`](docs/06-crear-instancias.md#paso-6--configurar-network-settings)
+7. [`Almacenamiento`](docs/06-crear-instancias.md#paso-7--almacenamiento)
+8. [`Lanzar la instancia`](docs/06-crear-instancias.md#paso-8--lanzar-la-instancia)
+9. [`Obtener el DNS público y compartirlo`](docs/06-crear-instancias.md#paso-9--obtener-el-dns-público-y-compartirlo-con-el-equipo)
+
+**6.2 Cada Worker crea su instancia**
+1. [`Diferencias en Network settings`](docs/06-crear-instancias.md#paso-6--configurar-network-settings-workers)
+2. [`Compartir la IP privada con el Líder`](docs/06-crear-instancias.md#al-finalizar--compartir-la-ip-privada-con-el-líder)
+
+---
+
+## Sección 7 / Conexión Master → Workers por SSH
+1. [`7.1 ¿Por qué el Master necesita la llave de los Workers?`](docs/07-conexion-master-workers.md#71--por-qué-el-master-necesita-la-llave-de-los-workers)
+2. [`7.2 Crear el Host del Master en Termius y conectarse`](docs/07-conexion-master-workers.md#72--crear-el-host-del-master-en-termius-y-conectarse)
+   - [`Crear el Keychain en Termius`](docs/07-conexion-master-workers.md#crear-el-keychain-en-termius)
+   - [`Crear el Host del Master en Termius`](docs/07-conexion-master-workers.md#crear-el-host-del-master-en-termius)
+   - [`Conectarse al Master`](docs/07-conexion-master-workers.md#verificar-conexión-con-la-master)
+3. [`7.3 Copiar los .pem de los Workers al Master`](docs/07-conexion-master-workers.md#73--copiar-los-pem-de-los-workers-al-master)
+   - [`Transferir archivos con el panel SFTP de Termius`](docs/07-conexion-master-workers.md#transferir-los-archivos-con-el-panel-sftp-de-termius)
+   - [`Verificar que los archivos llegaron correctamente`](docs/07-conexion-master-workers.md#verificar-que-los-archivos-llegaron-correctamente)
+4. [`7.4 Editar "~/.ssh/config" con nano`](docs/07-conexion-master-workers.md#74--editar-sshconfig-con-nano)
+   - [`Contenido del archivo`](docs/07-conexion-master-workers.md#contenido-del-archivo)
+   - [`Explicación línea por línea`](docs/07-conexion-master-workers.md#explicación-línea-por-línea)
+5. [`7.5 Ajustar permisos del "config" y los ".pem"`](docs/07-conexion-master-workers.md#75--ajustar-permisos-del-config-y-los-pem)
+   - [`¿Qué significan estos permisos?`](docs/07-conexion-master-workers.md#qué-significan-estos-permisos)
+   - [`Verificar permisos`](docs/07-conexion-master-workers.md#verificar-que-los-permisos-quedaron-correctos)
+6. [`7.6 Probar la conexión desde el Master`](docs/07-conexion-master-workers.md#76--probar-la-conexión-desde-el-master-hacia-cada-worker)
+   - [`Conectarse a cada Worker`](docs/07-conexion-master-workers.md#conectarse-a-worker-1)
+   - [`Tabla resumen de conexiones`](docs/07-conexion-master-workers.md#tabla-resumen-de-conexiones)
