@@ -1,311 +1,342 @@
-# 07 / Conexión Master → Workers por SSH
+# 07 — Conectividad SSH Master → Workers
 
-Con las instancias ya corriendo, el siguiente paso es habilitar la comunicación desde el Master hacia cada Worker a través de SSH. Para esto se usa **Termius**, el cliente SSH que el equipo ya tiene instalado.
-
-| Paso | Responsable | Acción                                                         |
-|:-----|:------------|:---------------------------------------------------------------|
-| 7.1  | Todos       | Entender por qué el Master necesita las llaves de los Workers  |
-| 7.2  | Líder       | Crear el Host del Master en Termius y conectarse               |
-| 7.3  | Líder       | Copiar los `.pem` de los Workers al Master vía SFTP en Termius |
-| 7.4  | Líder       | Editar `~/.ssh/config` en el Master con nano                   |
-| 7.5  | Líder       | Ajustar permisos del `config` y los `.pem`                     |
-| 7.6  | Líder       | Probar la conexión desde el Master hacia cada Worker           |
+Hasta este punto ya tienes la VPC configurada, las instancias creadas y estás listo para establecer la conectividad completa del sistema. Esta sección explica cómo conectarse al Master desde tu PC usando Termius, cómo trasladarle las llaves de los Workers y cómo habilitar el acceso del Master hacia cada Worker por SSH.
 
 ---
 
-## 7.1 / ¿Por qué el Master necesita la llave de los Workers?
 
-Cada Worker fue creado con su propio Key Pair (archivo `.pem`). Cuando el Líder intenta conectarse desde el Master hacia un Worker por SSH, el sistema exige autenticarse con esa llave privada.
 
-El problema es que la llave `.pem` de cada Worker fue descargada en el computador local del Líder, no en el Master. Para que el Master pueda iniciar conexiones SSH hacia los Workers, el archivo `.pem` correspondiente debe estar físicamente dentro del Master.
+## 7.1 — ¿Por qué el Master necesita la llave de los Workers?
 
-El flujo completo es:
+Recuerda la arquitectura que construimos:
+
+| Instancia  | Subnet                  | Accesible desde internet |
+|:-----------|:------------------------|:-------------------------|
+| `master`   | Pública (`10.0.1.0/24`) | ✅ Sí — tiene IP pública  |
+| `worker-1` | Privada (`10.0.2.0/24`) | ❌ No — solo IP privada   |
+| `worker-2` | Privada (`10.0.2.0/24`) | ❌ No — solo IP privada   |
+| `worker-3` | Privada (`10.0.2.0/24`) | ❌ No — solo IP privada   |
+
+Los Workers viven en una subnet privada. Eso significa que **no se pueden alcanzar directamente desde tu PC**. La única máquina que puede comunicarse con ellos es el Master, porque comparten la misma VPC y la tabla de ruteo local permite el tráfico interno.
+
+La estrategia es la siguiente:
 
 ```
-Computador local del Líder
-        │
-        │  (SSH con SRV-MASTER-KEY.pem)
-        ▼
-  SRV-MASTER-DATA  ──────────────────────────────────────────────┐
-        │  (SSH con SRV-WORKER-X-KEY.pem)                        │
-        ▼                                                        │
-  SRV-WORKER-1                                                   │
-  SRV-WORKER-2    ◄──── Solo accesibles desde dentro de la VPC <─┘
-  SRV-WORKER-3
+Tu PC  ──SSH──►  Master (subnet pública)  ──SSH──►  Worker (subnet privada)
 ```
 
-> 💡 Los Workers no tienen IP pública, por lo que **no es posible conectarse a ellos directamente desde internet**. El Master actúa como punto de entrada (*jump host*) hacia la red privada.
+A este patrón se le llama **Bastion Host** o nodo de salto: el Master actúa como intermediario. Para que ese salto funcione, el Master necesita tener la llave privada (`.pem`) de cada Worker, de la misma manera que tu PC necesita la llave del Master para conectarse a él.
 
 ---
 
-## 7.2 / Crear el Host del Master en Termius y conectarse
+## 7.2 — Crear el Host del Master en Termius y conectarse
 
-Antes de poder transferir archivos al Master, el Líder debe tener configurada la sesión del Master en Termius. Este es el primer paso que permite operar todo lo demás desde la interfaz gráfica.
-
-### Requisito previo
-
-El Líder debe tener en su computador local:
-
-- El archivo `SRV-MASTER-KEY.pem` descargado al crear la instancia Master.
-- El **DNS público** del Master copiado desde la consola de AWS (campo **Public IPv4 DNS** en la pestaña Details de la instancia `SRV-MASTER-DATA`).
-
-> ⚠️ El DNS público tiene el formato `ec2-XX-XX-XX-XX.compute-1.amazonaws.com`. Cambia cada vez que la instancia se apaga y se vuelve a encender.
+Termius es el cliente SSH que usamos en esta actividad. Permite gestionar conexiones mediante una interfaz gráfica sin necesidad de escribir comandos cada vez.
 
 ### Crear el Keychain en Termius
 
-El Keychain es donde Termius almacena las llaves privadas de forma segura. Antes de crear el Host, se debe registrar la llave del Master.
+El Keychain es el almacén de llaves dentro de Termius. Antes de crear el host, hay que registrar el archivo `.pem` del Master ahí.
 
-1. Abrir **Termius**.
-2. En la barra lateral izquierda hacer clic en **Keychain**.
-3. Hacer clic en el botón `+` → seleccionar `New Key`.
-4. Completar los campos:
+1. Abrir Termius → en el panel izquierdo seleccionar **Keychain**.
+2. Hacer clic en el botón `+` → **New Key**.
+3. Asignar un nombre descriptivo, por ejemplo: `master-key`.
+4. Seleccionar **Import from file** y cargar el archivo `master-key.pem` descargado al crear la instancia.
+5. No le tienes que dar a ningun botón de guardar Termius ya te guarda automaticamente la Keychan.
 
-| Campo           | Valor                                                                                            |
-|:----------------|:-------------------------------------------------------------------------------------------------|
-| **Label**       | `SRV-MASTER-KEY`                                                                                 |
-| **Private Key** | Hacer clic en `Import from file` y seleccionar el archivo `SRV-MASTER-KEY.pem` descargado de AWS |
-| **Passphrase**  | Dejar vacío (las llaves de AWS no tienen passphrase por defecto)                                 |
-
-![Keychan Config](../assets/screenshots/Termius/00-keychan-config.png)
-5. Los cambios se guardan automáticamente, por lo que no tienes que pulsar ningún botón; puedes continuar con el siguiente paso.
-
-> 💡 Una vez guardada la llave en el Keychain, Termius la recordará para futuras sesiones. No es necesario volver a importarla.
+![Captura del panel Keychain de Termius con la llave del Master ya importada y visible en la lista](../assets/screenshots/Termius/00-keychan-config.png)
 
 ### Crear el Host del Master en Termius
 
-1. En la barra lateral izquierda hacer clic en **Hosts**.
-2. Hacer clic en el botón `+` → seleccionar `New Host`.
-3. Completar los campos:
+1. En el panel izquierdo seleccionar **Hosts** → hacer clic en `+` → **New Host**.
+2. Completar los campos:
 
-| Campo                   | Valor                                                              |
-|:------------------------|:-------------------------------------------------------------------|
-| **Address**             | DNS público del Master (`ec2-XX-XX-XX-XX.compute-1.amazonaws.com`) |
-| **Label**               | `SRV-MASTER-DATA`                                                  |
-| **Port**                | `22`                                                               |
-| **Username**            | `ubuntu`                                                           |
-| **Password**            | Dejar vacío                                                        |
-| **Keys & Certificates** | Seleccionar la llave `SRV-MASTER-KEY` creada en el Keychain        |
+| Campo | Valor |
+|:------|:------|
+| **Label** | `master` (o cualquier nombre descriptivo) |
+| **Address** | DNS público de la instancia Master, copiado desde la consola de AWS |
+| **Username** | `ubuntu` |
+| **Keys** | Seleccionar la llave `master-key` registrada en el Keychain |
 
-![Host Config](../assets/screenshots/Termius/01-host-config.png)
-4. Puedes darle al botón azul `Connect` para entrar a la instancia.
+3. Guardar el host.
 
-### Verificar conexión con la Master
+> ⚠️ El DNS público tiene el formato `ec2-XX-XX-XX-XX.compute-1.amazonaws.com`. Cópialo desde la consola de AWS → EC2 → seleccionar la instancia → campo **Public IPv4 DNS**. Este valor cambia cada vez que la instancia se apaga y se vuelve a encender.
 
-1. Termius abrirá una terminal conectada al Master.
-2. El prompt debe mostrar algo como:
+![Captura del formulario de creación de Host en Termius con los campos completados para el Master](../assets/screenshots/Termius/01-host-config.png)
+
+### Verificar conexión con el Master
+
+Hacer doble clic sobre el host `master` en Termius. Si la configuración es correcta, se abrirá una terminal con el prompt de la instancia:
 
 ```
-ubuntu@ip-10-0-1-XXX:~$
+ubuntu@ip-10-0-1-XX:~$
 ```
 
-Esto confirma que la conexión al Master está funcionando correctamente.
-
-> ⚠️ Si la conexión falla, verificar que el DNS público del Master no haya cambiado. Ir a la consola de AWS → instancia `SRV-MASTER-DATA` → pestaña **Details** → campo **Public IPv4 DNS**, copiarlo y actualizar el campo **Address** en el Host de Termius.
+![Captura de la terminal de Termius mostrando el prompt de la instancia Master activa](../assets/screenshots/Termius/03-prompt-master.png)
 
 ---
 
-## 7.3 / Copiar los `.pem` de los Workers al Master
+## 7.3 — Copiar los `.pem` de los Workers al Master
 
-Con la sesión del Master activa en Termius, el Líder puede transferir los archivos `.pem` de los Workers desde su computador local hacia el Master usando el **panel SFTP integrado de Termius**, sin necesidad de comandos.
+Para que el Master pueda autenticarse ante cada Worker, necesita sus llaves privadas. Hay tres formas de hacer esa transferencia dependiendo del sistema operativo y las herramientas que tengas disponibles.
 
-### Requisito previo
+### Opción A — Transferir con el panel SFTP de Termius
 
-El Líder debe tener en su computador local los tres archivos `.pem` de los Workers. Si los Workers generaron sus propias llaves, deben habérselas enviado al Líder antes de este paso.
+Termius incluye un panel SFTP que permite arrastrar y soltar archivos desde tu PC hacia la instancia, sin necesidad de usar comandos.
+
+1. Con la sesión del Master abierta en Termius, buscar el ícono de **SFTP** en la barra lateral de la terminal.
+2. Se abrirá un panel dividido: tu sistema de archivos local a la izquierda, el sistema de archivos del Master a la derecha.
+3. En el panel derecho navegar hasta `/home/ubuntu/`.
+4. En el panel izquierdo localizar los archivos `.pem` de cada Worker.
+5. Arrastrar cada archivo desde el panel izquierdo hacia el panel derecho.
+
+![Captura del panel SFTP de Termius mostrando el arrastre de los archivos .pem de los Workers hacia el directorio /home/ubuntu/ del Master](../assets/screenshots/Termius/02-transferir-keys.png)
+
+---
+
+### Opción B — Transferir con `scp` desde Windows
+
+`scp` (Secure Copy Protocol) es una herramienta de línea de comandos que permite copiar archivos entre máquinas de forma segura usando SSH. Está disponible de forma nativa en PowerShell desde Windows 10.
+
+#### ¿Necesito dar permisos al `.pem` antes de ejecutar `scp` en Windows?
+
+**No.** Windows no tiene el sistema de permisos de Unix, por lo que el archivo `.pem` se usa directamente desde PowerShell sin ninguna configuración previa. El comando funciona tal como está, sin pasos adicionales.
+
+> ⚠️ Lo que sí debes hacer es asegurarte de que la ruta al archivo sea correcta. Una ruta incorrecta es el error más común al ejecutar `scp` desde Windows.
+
+#### Ejecutar el comando desde PowerShell
+
+Abre PowerShell y ejecuta un comando por cada llave que necesitas transferir:
+
+```powershell
+scp -i "C:\Users\TuNombre\Downloads\master-key.pem" "C:\Users\TuNombre\Downloads\worker1-key.pem" ubuntu@54.123.45.67:/home/ubuntu/
+scp -i "C:\Users\TuNombre\Downloads\master-key.pem" "C:\Users\TuNombre\Downloads\worker2-key.pem" ubuntu@54.123.45.67:/home/ubuntu/
+scp -i "C:\Users\TuNombre\Downloads\master-key.pem" "C:\Users\TuNombre\Downloads\worker3-key.pem" ubuntu@54.123.45.67:/home/ubuntu/
+```
+
+| Parte del comando | Descripción |
+|:------------------|:------------|
+| `-i "...master-key.pem"` | La llave con la que te autenticas ante el Master |
+| `"...workerX-key.pem"` | El archivo que quieres enviar |
+| `ubuntu@54.123.45.67` | Usuario e IP pública del Master |
+| `:/home/ubuntu/` | Carpeta de destino dentro del Master |
+
+> 💡 Si usas **Git Bash** en Windows, puedes escribir las rutas con `/` en lugar de `\`, igual que en Linux o macOS.
+
+> 💡 Una vez que el `.pem` llega al Master (que corre Linux), sí deberás ajustar sus permisos ahí adentro. Eso se hace en el [paso 7.5](#75--ajustar-permisos-del-config-y-los-pem).
+
+---
+
+### Opción C — Transferir con `scp` desde Linux o macOS
+
+En Linux y macOS el archivo `.pem` tiene el sistema de permisos de Unix, por lo que antes de poder usarlo con `scp` hay que restringir sus permisos. Si no lo haces, el comando fallará con la siguiente advertencia:
 
 ```
-SRV-WORKER-1-KEY.pem
-SRV-WORKER-2-KEY.pem
-SRV-WORKER-3-KEY.pem
+WARNING: UNPROTECTED PRIVATE KEY FILE!
+Permissions 0644 for 'master-key.pem' are too open.
 ```
 
-> ⚠️ Sin los archivos `.pem`, no es posible continuar con los pasos siguientes.
+#### Paso 1 — Ajustar permisos del `.pem` del Master en tu PC local
 
-### Transferir los archivos con el panel SFTP de Termius
-
-1. En la sesión abierta del Master en Termius, hacer clic en el ícono **SFTP** en la barra superior de la terminal (o ir a `View → SFTP Panel`).
-2. Termius abrirá un panel dividido en dos columnas:
-    - **Columna izquierda**: sistema de archivos del computador local del Líder.
-    - **Columna derecha**: sistema de archivos del Master (instancia EC2).
-![Tranfers Workerss Keys](../assets/screenshots/Termius/02-transferir-keys.png)
-3. En la **columna derecha** (Master), navegar hasta el directorio home del usuario:
-
-```
-/home/ubuntu/
+```bash
+chmod 400 master-key.pem
 ```
 
-4. En la **columna izquierda** (local), navegar hasta la carpeta donde están los tres archivos `.pem` de los Workers.
-5. Seleccionar los tres archivos `.pem` y arrastrarlos hacia la columna derecha, o hacer clic derecho sobre ellos → `Upload`.
-6. Esperar a que la transferencia termine. Termius mostrará una barra de progreso por cada archivo.
+Esto le dice al sistema que solo el propietario del archivo puede leerlo. SSH exige esta restricción antes de aceptar la llave.
+
+#### Paso 2 — Ejecutar el comando desde tu terminal
+
+```bash
+scp -i "master-key.pem" worker1-key.pem ubuntu@54.123.45.67:/home/ubuntu/
+scp -i "master-key.pem" worker2-key.pem ubuntu@54.123.45.67:/home/ubuntu/
+scp -i "master-key.pem" worker3-key.pem ubuntu@54.123.45.67:/home/ubuntu/
+```
+
+> 💡 Si los archivos `.pem` no están en el mismo directorio donde abriste la terminal, escribe la ruta completa, por ejemplo: `/Users/TuNombre/Downloads/worker1-key.pem`.
+
+---
 
 ### Verificar que los archivos llegaron correctamente
 
-En la terminal del Master ejecutar:
+Independientemente del método que usaste, conéctate al Master y lista el contenido del directorio home:
 
 ```bash
-ls -la /home/ubuntu/*.pem
+ls -la /home/ubuntu/
 ```
 
-La salida esperada debe mostrar los tres archivos:
+Deberías ver todos los archivos `.pem` transferidos:
 
 ```
--rw-rw-r-- 1 ubuntu ubuntu 1678 ... SRV-WORKER-1-KEY.pem
--rw-rw-r-- 1 ubuntu ubuntu 1678 ... SRV-WORKER-2-KEY.pem
--rw-rw-r-- 1 ubuntu ubuntu 1678 ... SRV-WORKER-3-KEY.pem
+-rw------- 1 ubuntu ubuntu 1674 Jan  1 10:00 master-key.pem
+-rw------- 1 ubuntu ubuntu 1674 Jan  1 10:00 worker1-key.pem
+-rw------- 1 ubuntu ubuntu 1674 Jan  1 10:00 worker2-key.pem
+-rw------- 1 ubuntu ubuntu 1674 Jan  1 10:00 worker3-key.pem
 ```
 
-> ⚠️ Los permisos en este momento son incorrectos (`rw-rw-r--`). Esto se corregirá en el **paso 7.5**. Si se intenta usar SSH con estos permisos, el sistema lo rechazará con el error `WARNING: UNPROTECTED PRIVATE KEY FILE`.
+![Captura de la terminal del Master mostrando los cuatro archivos .pem listados con ls -la](../assets/screenshots/Termius/04-verificar-master-keys.png)
 
 ---
 
-## 7.4 / Editar `~/.ssh/config` con nano
+## 7.4 — Editar `~/.ssh/config` con nano
 
-El archivo `~/.ssh/config` permite definir alias y configuraciones para cada conexión SSH. En lugar de escribir cada vez el comando completo con IP, usuario y llave, basta con escribir `ssh worker-1` y SSH usará la configuración definida automáticamente.
+El archivo `~/.ssh/config` permite definir alias para cada conexión SSH. En lugar de escribir el comando completo con IP, usuario y llave cada vez que quieres conectarte a un Worker, defines cada entrada una sola vez y luego usas simplemente `ssh worker1`.
 
-### Abrir o crear el archivo
+### Abrir o crear el archivo con nano
 
-En la terminal del Master ejecutar:
+Desde la terminal del Master:
 
 ```bash
 nano ~/.ssh/config
 ```
 
-Si el archivo no existe, `nano` lo creará automáticamente al guardar por primera vez.
+Si el archivo no existe, `nano` lo crea automáticamente.
 
 ### Contenido del archivo
 
-Escribir el siguiente bloque para cada Worker, reemplazando las IPs privadas con las que cada Worker compartió con el Líder al finalizar el paso 6.2:
+Copia y pega el siguiente bloque, reemplazando las IPs con las reales de tu equipo:
 
-```text
-Host worker-1
-    HostName 10.0.2.XXX
-    User ubuntu
-    IdentityFile /home/ubuntu/SRV-WORKER-1-KEY.pem
-
-Host worker-2
-    HostName 10.0.2.XXX
-    User ubuntu
-    IdentityFile /home/ubuntu/SRV-WORKER-2-KEY.pem
-
-Host worker-3
-    HostName 10.0.2.XXX
-    User ubuntu
-    IdentityFile /home/ubuntu/SRV-WORKER-3-KEY.pem
 ```
+Host master
+    HostName 10.0.1.XX
+    User ubuntu
+    IdentityFile /home/ubuntu/master-key.pem
 
-### Guardar y salir de nano
+Host worker1
+    HostName 10.0.2.XX
+    User ubuntu
+    IdentityFile /home/ubuntu/worker1-key.pem
+    ProxyJump master
 
-| Teclas     | Acción                                     |
-|:-----------|:-------------------------------------------|
-| `Ctrl + O` | Guardar el archivo (confirmar con `Enter`) |
-| `Ctrl + X` | Salir de nano                              |
+Host worker2
+    HostName 10.0.2.XX
+    User ubuntu
+    IdentityFile /home/ubuntu/worker2-key.pem
+    ProxyJump master
+
+Host worker3
+    HostName 10.0.2.XX
+    User ubuntu
+    IdentityFile /home/ubuntu/worker3-key.pem
+    ProxyJump master
+```
 
 ### Explicación línea por línea
 
-| Directiva                  | Valor de ejemplo                    | Significado                                                                                                                                                                           |
-|:---------------------------|:------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Host`                     | `worker-1`                          | Alias corto que se usará en el comando `ssh worker-1`. Puede ser cualquier nombre sin espacios.                                                                                       |
-| `HostName`                 | `10.0.2.XXX`                        | IP privada del Worker dentro de la VPC. Se obtiene del campo **Private IPv4 address** en la consola de AWS.                                                                           |
-| `User`                     | `ubuntu`                            | Usuario por defecto de las instancias Ubuntu en EC2. No cambia.                                                                                                                       |
-| `IdentityFile`             | `/home/ubuntu/SRV-WORKER-1-KEY.pem` | Ruta absoluta al archivo `.pem` que corresponde a ese Worker. Cada Worker tiene su propio archivo.                                                                                    |
+| Directiva | Descripción |
+|:----------|:------------|
+| `Host` | El alias con el que invocarás la conexión, por ejemplo `ssh worker1` |
+| `HostName` | La IP privada real de la instancia |
+| `User` | El usuario del sistema operativo. En instancias Ubuntu de AWS siempre es `ubuntu` |
+| `IdentityFile` | Ruta completa al archivo `.pem` que SSH usará para autenticarse |
+| `ProxyJump` | Indica que SSH debe pasar primero por el host señalado antes de llegar al destino final |
 
+El bloque `Host master` existe para que los bloques de los Workers puedan referenciar a `master` en `ProxyJump`. Sin él, SSH no sabría cómo llegar al Master cuando intenta hacer el salto.
 
-> 💡 Se usa la **IP privada** del Worker en lugar de un DNS porque la IP privada dentro de la VPC es estable: no cambia al apagar y encender la instancia. Esto hace la configuración más confiable a lo largo de la actividad.
+### Guardar y salir de nano
+
+Una vez escrito el contenido:
+- `Ctrl + O` → escribir los cambios al archivo
+- `Enter` → confirmar el nombre del archivo
+- `Ctrl + X` → salir de nano
+
+![Captura del archivo ~/.ssh/config abierto en nano con los cuatro bloques Host completos y correctamente indentados](../assets/screenshots/Termius/05-ssh-config.png)
 
 ---
 
-## 7.5 / Ajustar permisos del `config` y los `.pem`
+## 7.5 — Ajustar permisos del `config` y los `.pem`
 
-SSH es estricto con los permisos de los archivos de llave y configuración. Si los permisos son demasiado abiertos (es decir, otros usuarios del sistema también pueden leerlos), SSH rechaza la conexión por seguridad.
+SSH en Linux rechaza las conexiones cuando las llaves privadas o el archivo `config` tienen permisos demasiado abiertos. Este paso es obligatorio; sin él, los comandos del siguiente paso fallarán con una advertencia como esta:
 
-Ejecutar los siguientes comandos en la terminal del Master, **uno por uno**:
+```
+WARNING: UNPROTECTED PRIVATE KEY FILE!
+Permissions 0644 for 'worker1-key.pem' are too open.
+```
+
+### Ajustar permisos de los `.pem`
+
+```bash
+chmod 400 worker1-key.pem
+chmod 400 worker2-key.pem
+chmod 400 worker3-key.pem
+```
+
+### Ajustar permisos del `config`
 
 ```bash
 chmod 600 ~/.ssh/config
 ```
 
-```bash
-chmod 400 /home/ubuntu/SRV-WORKER-1-KEY.pem
-chmod 400 /home/ubuntu/SRV-WORKER-2-KEY.pem
-chmod 400 /home/ubuntu/SRV-WORKER-3-KEY.pem
-```
-
 ### ¿Qué significan estos permisos?
 
-| Comando     | Permiso resultante | Significado                                                                                                       |
-|:------------|:-------------------|:------------------------------------------------------------------------------------------------------------------|
-| `chmod 600` | `-rw-------`       | Solo el dueño puede leer y escribir. Nadie más puede acceder al archivo. Requerido para `~/.ssh/config`.          |
-| `chmod 400` | `-r--------`       | Solo el dueño puede leer. Ni siquiera el dueño puede modificarlo accidentalmente. Requerido para archivos `.pem`. |
+| Comando | Propietario | Grupo | Otros | Cuándo se usa |
+|:--------|:------------|:------|:------|:--------------|
+| `chmod 400` | Solo lectura ✅ | Sin acceso ❌ | Sin acceso ❌ | Llaves privadas `.pem` |
+| `chmod 600` | Lectura y escritura ✅ | Sin acceso ❌ | Sin acceso ❌ | Archivo `config` |
+
+Los tres dígitos representan los permisos del propietario, el grupo y los demás usuarios, en ese orden. Cada dígito es la suma de los bits de lectura (`4`), escritura (`2`) y ejecución (`1`). Por ejemplo, `6 = 4 + 2`, es decir, lectura y escritura.
 
 ### Verificar que los permisos quedaron correctos
 
 ```bash
-ls -la ~/.ssh/config /home/ubuntu/*.pem
+ls -la *.pem ~/.ssh/config
 ```
 
-La salida esperada:
+La salida debe verse así:
 
 ```
--rw------- 1 ubuntu ubuntu  XXX ... /home/ubuntu/.ssh/config
--r-------- 1 ubuntu ubuntu 1678 ... /home/ubuntu/SRV-WORKER-1-KEY.pem
--r-------- 1 ubuntu ubuntu 1678 ... /home/ubuntu/SRV-WORKER-2-KEY.pem
--r-------- 1 ubuntu ubuntu 1678 ... /home/ubuntu/SRV-WORKER-3-KEY.pem
+-r-------- 1 ubuntu ubuntu 1674 Jan  1 10:00 worker1-key.pem
+-r-------- 1 ubuntu ubuntu 1674 Jan  1 10:00 worker2-key.pem
+-r-------- 1 ubuntu ubuntu 1674 Jan  1 10:00 worker3-key.pem
+-rw------- 1 ubuntu ubuntu  312 Jan  1 10:00 /home/ubuntu/.ssh/config
 ```
 
-> ⚠️ Si los permisos son incorrectos al intentar conectarse, SSH mostrará el error `WARNING: UNPROTECTED PRIVATE KEY FILE` y rechazará la conexión. La solución siempre es volver a ejecutar el `chmod` correspondiente.
+`-r--------` corresponde a `400`. `-rw-------` corresponde a `600`.
 
 ---
 
-## 7.6 / Probar la conexión desde el Master hacia cada Worker
+## 7.6 — Probar la conexión desde el Master hacia cada Worker
 
-Con todo configurado, ya es posible conectarse a cada Worker directamente desde la terminal del Master usando los alias definidos en `~/.ssh/config`.
+Con el archivo `config` guardado y los permisos correctos, ejecuta los siguientes comandos desde la terminal del Master.
 
 ### Conectarse a Worker 1
 
-Desde la terminal del Master en Termius ejecutar:
-
 ```bash
-ssh worker-1
+ssh worker1
 ```
 
-Si la conexión es exitosa, el prompt cambiará y mostrará algo como:
+Si todo está bien configurado, verás el prompt de bienvenida de Ubuntu dentro del Worker:
 
 ```
-ubuntu@ip-10-0-2-XXX:~$
+Welcome to Ubuntu 22.04.X LTS...
+ubuntu@ip-10-0-2-XX:~$
 ```
 
-Esto indica que se está dentro del Worker 1. Para salir y volver al Master:
+Para cerrar la sesión del Worker y volver al Master:
 
 ```bash
 exit
 ```
 
-### Repetir para los demás Workers
+### Conectarse a Worker 2
 
 ```bash
-ssh worker-2
+ssh worker2
 ```
+
+### Conectarse a Worker 3
 
 ```bash
-ssh worker-3
+ssh worker3
 ```
 
-### Verificar el hostname dentro de cada Worker
-
-Como confirmación adicional, ejecutar dentro de cada sesión de Worker:
-
-```bash
-hostname -I
-```
-
-La IP que aparece debe coincidir con la IP privada del Worker al que se conectó, tal como fue compartida en el paso 6.2.
+![Captura de la terminal del Master mostrando una sesión SSH activa dentro de un Worker con el prompt ubuntu@ip-10-0-2-XX](../assets/screenshots/Termius/06-verificar-conexion-worker.png)
 
 ### Tabla resumen de conexiones
 
-| Desde            | Hacia    | Método                           | Llave usada                                   |
-|:-----------------|:---------|:---------------------------------|:----------------------------------------------|
-| Computador local | Master   | Termius → Host `SRV-MASTER-DATA` | `SRV-MASTER-KEY.pem` (en Keychain de Termius) |
-| Master           | Worker 1 | `ssh worker-1` en terminal       | `SRV-WORKER-1-KEY.pem` (en `/home/ubuntu/`)   |
-| Master           | Worker 2 | `ssh worker-2` en terminal       | `SRV-WORKER-2-KEY.pem` (en `/home/ubuntu/`)   |
-| Master           | Worker 3 | `ssh worker-3` en terminal       | `SRV-WORKER-3-KEY.pem` (en `/home/ubuntu/`)   |
+| Desde | Hacia | Método | Requiere ProxyJump |
+|:------|:------|:-------|:-------------------|
+| Tu PC | Master | Termius (doble clic) | ❌ No |
+| Master | Worker 1 | `ssh worker1` | ✅ Sí |
+| Master | Worker 2 | `ssh worker2` | ✅ Sí |
+| Master | Worker 3 | `ssh worker3` | ✅ Sí |
 
-> 💡 Si en algún momento la conexión desde Termius al Master falla, recordar que el DNS público del Master **cambia cada vez que la instancia se reinicia**. Verificar el nuevo DNS en la consola de AWS y actualizar el campo **Address** en el Host de Termius.
+> ⚠️ Si la conexión falla, lo primero que hay que revisar es que la IP privada del Worker en el `config` coincida exactamente con la que aparece en la consola de AWS. Un solo dígito incorrecto impide la conexión.
